@@ -91,6 +91,17 @@
             <artifactId>spring-security-crypto</artifactId>
             <!-- 版本号可省略（推荐）：由 Spring Boot BOM 自动管理 -->
         </dependency>
+<!--        langchain4j ai框架 2个-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+            <version>1.1.0-beta7</version>
+        </dependency>
     </dependencies>
 
     <build>
