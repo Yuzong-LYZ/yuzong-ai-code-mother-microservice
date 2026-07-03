@@ -1,6 +1,7 @@
 package com.yuzong.yuzongaicodemother.ai;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
@@ -39,12 +40,25 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private ChatModel chatModel;
 
+    // 补充：流式聊天模型
+    @Resource
+    private StreamingChatModel streamingChatModel;
+
     /**
      * 创建 AI代码生成器服务
+     * 原来那个被改：采用 Builder 模式，支持灵活的组件配置（流式输出、记忆、工具等）
      */
     @Bean
     public AiCodeGeneratorService aiCodeGeneratorService() {
-        // 指定AiCodeGeneratorService 接口的，chatModel大模型
-        return AiServices.create(AiCodeGeneratorService.class, chatModel);
+        return AiServices.builder(AiCodeGeneratorService.class)
+                .chatModel(chatModel)
+                .streamingChatModel(streamingChatModel)
+                .build();
     }
+//    @Bean
+//    public AiCodeGeneratorService aiCodeGeneratorService() {
+//        // 指定AiCodeGeneratorService 接口的，chatModel大模型
+//        return AiServices.create(AiCodeGeneratorService.class, chatModel);
+//    }
+
 }
