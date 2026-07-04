@@ -5,6 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.yuzong.yuzongaicodemother.ai.model.HtmlCodeResult;
 import com.yuzong.yuzongaicodemother.ai.model.MultiFileCodeResult;
+import com.yuzong.yuzongaicodemother.constant.AppConstant;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 
 import java.io.File;
@@ -19,7 +20,7 @@ public class CodeFileSaver {
 
     // 文件保存根目录
     // 备注：user.dir这个玩意，就相当于固定写法。运行时，会自动获取当前项目的根目录。
-    private static final String FILE_SAVE_ROOT_DIR = System.getProperty("user.dir") + "/tmp/code_output";
+    private static final String FILE_SAVE_ROOT_DIR = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
     /**
      * 保存 HtmlCodeResult

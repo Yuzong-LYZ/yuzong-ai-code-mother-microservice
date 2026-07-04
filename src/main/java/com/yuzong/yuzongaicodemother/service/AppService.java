@@ -4,7 +4,9 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
+import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -14,6 +16,16 @@ import java.util.List;
  * @author 齐夏：Yuzong，我看到了生生不息的激荡
  */
 public interface AppService extends IService<App> {
+
+    /**
+     * 4. 调用 AI（门面） 生成代码--通过对话生成应用代码
+     *
+     * @param appId     应用 ID
+     * @param message   用户消息
+     * @param loginUser 登录用户
+     * @return 生成的代码
+     */
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
     /**
      * 1. 应用类转VO  --获取应用包装类（封装类也行）
@@ -38,4 +50,14 @@ public interface AppService extends IService<App> {
      * @return 应用列表VO
      */
     List<AppVO> getAppVOList(List<App> appList);
+
+
+    /**
+     * 5. 部署应用
+     *
+     * @param appId     应用 ID
+     * @param loginUser 登录用户
+     * @return 可访问的部署地址
+     */
+    String deployApp(Long appId, User loginUser);
 }
