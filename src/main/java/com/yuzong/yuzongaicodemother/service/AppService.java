@@ -3,6 +3,7 @@ package com.yuzong.yuzongaicodemother.service;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
+import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
@@ -60,4 +61,7 @@ public interface AppService extends IService<App> {
      * @return 可访问的部署地址
      */
     String deployApp(Long appId, User loginUser);
+
+
+
 }

@@ -247,7 +247,7 @@ public class AppController {
 
     /**
      * 7. 管理员删除应用
-     *
+     * 这里的id是应用id
      * @param deleteRequest 删除请求
      * @return 删除结果
      */

@@ -16,8 +16,8 @@ import java.util.Map;
 
 public class MyBatisCodeGenerator {
 
-    // 哪个数据库表需要生成代码？
-    private static final String[] TABLE_NAMES = {"app"};
+    // 哪个数据库表需要生成代码？就输入数据库名
+    private static final String[] TABLE_NAMES = {"chat_history"};
 
     public static void main(String[] args) {
         // 获取数据源信息
