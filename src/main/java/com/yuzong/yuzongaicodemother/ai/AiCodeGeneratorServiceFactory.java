@@ -1,41 +1,41 @@
 package com.yuzong.yuzongaicodemother.ai;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
+import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
-import org.springframework.context.annotation.Bean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Duration;
 
 /**
  * AI 代码生成服务工厂类
- * 【工厂模式】：核心思想就一句话：你只管用，别管怎么造。--送原材料或者要求去工厂，工厂给你结果。
- *  逻辑：
- *  1. 看下面ai调用逻辑的注释的第三条。
- *  2. 现在我们这个工厂类：AiCodeGeneratorServiceFactory就是工厂本身
- *  3. 而根据1可以知道，我们这个工厂进行了：获取ChatModel大模型，同时进行了一系列操作，最终会返回一个产品回去给别人。
- *  4. 最终的产品实际上就是代理对象：AiCodeGeneratorService。这个产品本身就已经带着ai模型的。
- *  5. 因此，我们别的类想调用ai来用的时候。只需要注入AiCodeGeneratorService即可，调用其方法（他的方法是提示词）即可。
- *  6. 总结：工厂模式，说的很高大上，其实就是代码封装。
- *          获取ai模型，将ai模型交给代理对象，代理对象返回结果给工厂，工厂返回结果给调用者。
+ * 【工厂模式】：核心思想就一句话：你只管用，别管怎么造。---传入 appId，工厂返回对应的 AI 服务实例。
+ * 【备注】：实例：任何对象都是实例！普通的new出来的也是实例，动态代理对象也是实例。这里返回的实例实际上是代理对象。
+ * 【该类最新逻辑（旧逻辑已经删除，详细看2026/7/6 17:12的代码）】：
+ *  1. 需要用到ai服务的类--注入本工厂类，通过 getAiCodeGeneratorService(appId) 获取 AI 服务代理对象
+ *  2. 工厂内部使用 ffeine 本地缓存管理代理对象，实现对话记忆的隔离与复用：
+ *       - 缓存命中：直接返回已有的 AiCodeGeneratorService 代理对象（保留对话记忆）
+ *       - 缓存未命中：自动创建新的AiCodeGeneratorService 代理对象，存入缓存后返回
+ *  3. 无论缓存是否命中，调用方始终能拿到一个可用的代理对象
+ *  4. 使用代理对象的方法。不过这些方法被我统一包装到AiCodeGeneratorFacade门面类当中。外面的类直接调用门面类即可。
+ *  备注：这个代理对象，代理的是：AiCodeGeneratorService接口
+ *  备注：将本来的Bean注解删除的情况下，也就是：本类的aiCodeGeneratorService方法删除
+ *
  */
 @Configuration
+@Slf4j
 public class AiCodeGeneratorServiceFactory {
 
     /**
-     * ai调用逻辑：
-     * 1. 刚在application.yaml：指向用 OpenAI 兼容接口的大模型，地址是 DeepSeek 的 API，密钥是 xxx，模型名是 deepseek-chat。
-     * 2. 这个chatModel就是自动注入的application的模型
-     * 3. 【核心】这个AiCodeGeneratorServiceFactory的aiCodeGeneratorService方法return的方法：
-     *    是langchain4j的核心api，他会自动利用 Java 动态代理创建一个对象。
-     *    这个对象实现了 AiCodeGeneratorService接口，并使用chatModel大模型
-     * 4. 我们要调用ai来用的时候。比如AiCodeGeneratorServiceTest测试类当中，需要注入：AiCodeGeneratorService
-     *    因为这个AiCodeGeneratorService看上去是正常注入，但是他的实现类实际上就是langchain4j创建的代理对象，也就是第3点所说的那个代理对象
-     *    不过无所谓，实现形式不同而已，把他当作正常的@Resource注入即可
-     *    调用时，代理对象自动读取AiCodeGeneratorService类的方法上的 @SystemMessage 注解，
-     *    加载提示词文件，将参数作为用户消息，
-     *    然后调用内部的 chatModel 发送请求给 DeepSeek 并返回结果。
-     * 5. 缺点：他最后返回的是字符串，所以后续需要利用langchain4j的结构化输出。以及将输出结果解析出来保存到本地文件中。
+     *【注意】当我们注入ChatModel时，就将：在application.yaml配置的信息【ai模型】注入进chatModel里。（包括key，api等）
+     * 备注：我们是用deepseek指向用 OpenAI 兼容接口的大模型来定义。模型名：deepseek-v4-flash
      */
     @Resource
     private ChatModel chatModel;
@@ -44,21 +44,63 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private StreamingChatModel streamingChatModel;
 
+    // 补充：Redis 聊天记忆存储
+    @Resource
+    private RedisChatMemoryStore redisChatMemoryStore;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
+
+// 【备注】下面的数字，1. 2. 3. 是执行顺序，并非写的时候的顺序
     /**
-     * 创建 AI代码生成器服务
-     * 原来那个被改：采用 Builder 模式，支持灵活的组件配置（流式输出、记忆、工具等）
+     * AI 服务代理对象 本地缓存【这个方法在注入本工厂类时，会自动创建并初始化】
+     * 缓存策略：
+     * - 最大缓存 1000 个代理对象
+     * - 写入后 30 分钟过期
+     * - 访问后 10 分钟过期
      */
-    @Bean
-    public AiCodeGeneratorService aiCodeGeneratorService() {
+    private final Cache<Long, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
+            .maximumSize(1000)
+            .expireAfterWrite(Duration.ofMinutes(30))
+            .expireAfterAccess(Duration.ofMinutes(10))
+            .removalListener((key, value, cause) -> {
+                log.debug("AI 服务实例被移除，appId: {}, 原因: {}", key, cause);
+            })
+            .build();
+
+
+    /**
+     * 1. 根据 appId 获取服务（带缓存）
+     * 如果有appId，则从缓存中获取AiCodeGeneratorService代理对象
+     * 如果没有appId，则创建新的AiCodeGeneratorService代理对象存入缓存中
+     */
+    public AiCodeGeneratorService getAiCodeGeneratorService(long appId) {
+        return serviceCache.get(appId, this::createAiCodeGeneratorService); // 根据appId找缓存中有没有aiservice。有则返回，没有则调用createAiCodeGeneratorService方法创建
+    }
+
+    /**
+     * 2. 创建新的 AI 服务代理对象
+     * 【核心】return部分：
+     *        是langchain4j的核心api，他会自动利用 Java 动态代理创建一个代理对象，代理AiCodeGeneratorService接口的代理对象。
+     *        这个对象自动实现了 AiCodeGeneratorService接口。因为我们传入了chatModel。所以自带ai模型
+     * 【缺点】：他最后返回的是字符串，所以后续需要利用langchain4j的结构化输出。以及将输出结果解析出来保存到本地文件中【已优化】。
+     */
+    private AiCodeGeneratorService createAiCodeGeneratorService(long appId) {
+        log.info("为 appId: {} 创建新的 AI 服务实例", appId);
+        // 根据 appId 构建独立的对话记忆【隔离不同应用的对话记忆】
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory
+                .builder()
+                .id(appId)
+                .chatMemoryStore(redisChatMemoryStore)
+                .maxMessages(20)
+                .build();
+        // 补充：从数据库加载历史对话到redis记忆中
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
         return AiServices.builder(AiCodeGeneratorService.class)
                 .chatModel(chatModel)
                 .streamingChatModel(streamingChatModel)
+                .chatMemory(chatMemory)
                 .build();
     }
-//    @Bean
-//    public AiCodeGeneratorService aiCodeGeneratorService() {
-//        // 指定AiCodeGeneratorService 接口的，chatModel大模型
-//        return AiServices.create(AiCodeGeneratorService.class, chatModel);
-//    }
 
 }

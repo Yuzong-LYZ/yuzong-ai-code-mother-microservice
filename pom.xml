@@ -91,6 +91,11 @@
             <artifactId>spring-security-crypto</artifactId>
             <!-- 版本号可省略（推荐）：由 Spring Boot BOM 自动管理 -->
         </dependency>
+<!--        redis管理session登录态： Spring Session + Redis -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
 <!--        langchain4j ai框架 2个-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -102,11 +107,23 @@
             <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
             <version>1.1.0-beta7</version>
         </dependency>
+
 <!--        Reactor是响应式编程，langchain4j提供的。可把ai返回的内容封装为更通用的Flux响应式对象-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-reactor</artifactId>
             <version>1.1.0-beta7</version>
+        </dependency>
+<!--        langchain4j springboot redis 的整合依赖-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-redis-spring-boot-starter</artifactId>
+            <version>1.1.0-beta7</version>
+        </dependency>
+<!--        Caffeine本地缓存-->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
     </dependencies>
 

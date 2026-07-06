@@ -9,10 +9,28 @@ spring:
     password: 122333123
   profiles:
     active: local
+  # redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      #有账号密码的要设置账号密码
+      password:
+      ttl: 3600  # 过期时间：1小时
+#      database: 0   # 配置的时候无法赋值database所以这里不要了
+  # redis管理session 配置--session放在redis的时间
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
 server:
   port: 8123
   servlet:
     context-path: /api
+    # cookie 30 天过期--- 在浏览器过期的时间
+    session:
+      cookie:
+        max-age: 2592000
 # springdoc-openapi
 springdoc:
   group-configs:
@@ -23,3 +41,4 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+

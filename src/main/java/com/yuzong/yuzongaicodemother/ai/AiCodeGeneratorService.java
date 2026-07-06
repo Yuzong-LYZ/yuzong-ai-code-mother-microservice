@@ -7,6 +7,7 @@ import reactor.core.publisher.Flux;
 
 /**
  * AI 代码生成服务接口
+ * 备注：@SystemMessage的参数是提示词
  */
 public interface AiCodeGeneratorService {
 

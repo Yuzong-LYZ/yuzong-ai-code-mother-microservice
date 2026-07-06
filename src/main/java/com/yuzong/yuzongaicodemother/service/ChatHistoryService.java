@@ -6,6 +6,7 @@ import com.mybatisflex.core.service.IService;
 import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.ChatHistory;
 import com.yuzong.yuzongaicodemother.model.entity.User;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 import java.time.LocalDateTime;
 
@@ -55,4 +56,15 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     Page<ChatHistory> listAppChatHistoryByPage(Long appId, int pageSize,
                                                LocalDateTime lastCreateTime,
                                                User loginUser);
+
+    /**
+     * 5.将对话历史从数据库加载到redis中（记忆）中
+     * 备注：MessageWindowChatMemory的add不是“加载（Load）”到内存，而是“追加（Add）”到内存，并且“同步写入”到 Redis中
+     *
+     * @param appId         应用ID
+     * @param chatMemory    对话记忆
+     * @param maxCount      最大加载条数
+     * @return 加载的条数
+     */
+    int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount);
 }
