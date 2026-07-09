@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.yuzong.yuzongaicodemother.constant.AppConstant;
 import com.yuzong.yuzongaicodemother.core.AiCodeGeneratorFacade;
+import com.yuzong.yuzongaicodemother.core.builder.VueProjectBuilder;
 import com.yuzong.yuzongaicodemother.core.handler.StreamHandlerExecutor;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
@@ -55,6 +56,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
     private ChatHistoryService chatHistoryService;
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
 
     /**
@@ -221,7 +224,23 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
         }
-        // 7. 复制文件到部署目录
+        // 补充：7. Vue 项目特殊处理：执行构建
+        // 备注：我们其实在创建应用的时候就已经构建了一次了。这里属于二次构建。换句话说，这里可以说是多此一举。但是！他没坏处。
+        //      毕竟部署需要点时间是完全可以接受的，宁愿损失一点时间，也不愿因为部署失败而影响使用。
+        // 当然，也可以直接判断原来那个构建的dist是否存在。不存在则二次构建，存在则不需要二次构建。都可以，无所谓。
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
+        if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
+            // Vue 项目需要构建
+            boolean buildSuccess = vueProjectBuilder.buildProject(sourceDirPath);
+            ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "Vue 项目构建失败，请检查代码和依赖");
+            // 检查 dist 目录是否存在
+            File distDir = new File(sourceDirPath, "dist");
+            ThrowUtils.throwIf(!distDir.exists(), ErrorCode.SYSTEM_ERROR, "Vue 项目构建完成但未生成 dist 目录");
+            // 将 dist 目录作为部署源
+            sourceDir = distDir;
+            log.info("Vue 项目构建成功，将部署 dist 目录: {}", distDir.getAbsolutePath());
+        }
+        // 8. 复制文件到部署目录
         // 备注：这个地址是：根目录+随机的6位deployKey
         // 备注：这里构建的是部署目录的路径。不要搞混了
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
@@ -231,14 +250,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
         }
-        // 8. 更新应用的 deployKey 和部署时间
+        // 9. 更新应用的 deployKey 和部署时间
         App updateApp = new App();
         updateApp.setId(appId); // 设置应用 ID
         updateApp.setDeployKey(deployKey); // 设置 deployKey
         updateApp.setDeployedTime(LocalDateTime.now());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-        // 9. 返回可访问的 URL
+        // 10. 返回可访问的 URL
         // %s就是占位符号。最终结果：http://localhost:8080/deployKey/
         return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
