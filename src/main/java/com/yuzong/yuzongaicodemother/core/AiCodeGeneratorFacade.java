@@ -1,14 +1,21 @@
 package com.yuzong.yuzongaicodemother.core;
 
+import cn.hutool.json.JSONUtil;
 import com.yuzong.yuzongaicodemother.ai.AiCodeGeneratorService;
 import com.yuzong.yuzongaicodemother.ai.AiCodeGeneratorServiceFactory;
 import com.yuzong.yuzongaicodemother.ai.model.HtmlCodeResult;
 import com.yuzong.yuzongaicodemother.ai.model.MultiFileCodeResult;
+import com.yuzong.yuzongaicodemother.ai.model.message.AiResponseMessage;
+import com.yuzong.yuzongaicodemother.ai.model.message.ToolExecutedMessage;
+import com.yuzong.yuzongaicodemother.ai.model.message.ToolRequestMessage;
 import com.yuzong.yuzongaicodemother.core.parser.CodeParserExecutor;
 import com.yuzong.yuzongaicodemother.core.saver.CodeFileSaverExecutor;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -98,8 +105,9 @@ public class AiCodeGeneratorFacade {
                 yield processCodeStream(codeStream, CodeGenTypeEnum.MULTI_FILE, appId);
             }
             case VUE_PROJECT -> {
-                Flux<String> codeStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processCodeStream(codeStream, CodeGenTypeEnum.MULTI_FILE, appId);
+                // 修改成TokenStream并优化代码
+                TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                yield processTokenStream(tokenStream);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -107,6 +115,115 @@ public class AiCodeGeneratorFacade {
             }
         };
     }
+
+    /**
+     *
+     * TokenStream 转换为 Flux<String> 方法 json格式
+     * 将 TokenStream（AI 模型的流式响应）转换为 Reactor 的 Flux<String> 响应式流
+     * 这样前端可以通过 SSE（Server-Sent Events）等方式逐步接收 AI 的回复
+     * 备注：此乃模版代码。不需要理解
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        // Flux.create() = 创建一个"流管道"
+        // sink = 管道的入口，你往里面塞什么，前端就能收到什么
+        // 返回值 Flux<String> = 这个管道本身（交给 Spring WebFlux 推给前端）
+        return Flux.create(sink -> {
+            // 现在要监听 TokenStream。
+            tokenStream
+                    /**
+                     * 【事件监听器 ①】监听"AI 正在吐字"事件
+                     * 谁触发的？→ LangChain4j 框架底层。
+                     * 什么时候触发？→ AI 每吐出一个字/词，就触发一次。
+                     *              比如 AI 要回答"你好世界"，就会触发 4 次：
+                     *                第1次触发：partialResponse = "你"
+                     *                第2次触发：partialResponse = "好"
+                     *                第3次触发：partialResponse = "世"
+                     *                第4次触发：partialResponse = "界"
+                     * partialResponse 从哪来？
+                     *                → 框架底层在接收到大模型 API 返回的数据时，
+                     *                  自动把文本提取出来，作为参数传进来的。
+                     *                  你不需要管它从哪来，框架会"喂"给你。
+                     * 这段代码做了什么？
+                     *                → 把这个字包装成 AiResponseMessage 信封，
+                     *                  然后扔进 sink 管道，推给前端。
+                     */
+                    .onPartialResponse((String partialResponse) -> {
+                        // partialResponse 就是 AI 吐出的那一个字，比如 "你"
+                        // 用信封包起来，变成：{"type":"AI_RESPONSE","data":"你"}
+                        AiResponseMessage msg = new AiResponseMessage(partialResponse);
+                        // 反序列化后，扔进管道，前端就能收到这个 JSON 字符串
+                        sink.next(JSONUtil.toJsonStr(msg));
+                    })
+                    /**
+                     * 【事件监听器 ②】监听"AI 想调用工具"事件
+                     * 谁触发的？→ 框架底层。
+                     * 什么时候触发？→ AI 在思考过程中，决定要调用某个工具时。
+                     *   比如 AI 判断用户问的是天气，决定调用 "getWeather" 函数。
+                     *   注意：这个事件和上面的 onPartialResponse 是【并列的】，
+                     *   不是从 onPartialResponse 传数据过来的！
+                     * index 从哪来？
+                     *   → 框架传的。AI 可能一次要调用多个工具，
+                     *     index 就是第几个工具（0, 1, 2...）。
+                     * toolExecutionRequest 从哪来？
+                     *   → 框架传的。框架底层收到大模型返回的 JSON，
+                     *     已经帮你解析成了 ToolExecutionRequest 对象。
+                     *     这个对象里已经有 id、name、arguments 了。
+                     * 这段代码做了什么？
+                     *   → 把工具调用请求包装成信封，推给前端。
+                     *     前端收到后可以显示 "正在查询天气..." 的动画。
+                     *
+                     */
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        // toolExecutionRequest 是框架给的 Java 对象，不是 JSON 字符串！
+                        // 它里面有 .id(), .name(), .arguments() 方法
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                    })
+
+                    /*
+                     * 【事件监听器 ③】监听"工具执行完了"事件
+                     * 谁触发的？→ 框架底层。
+                     * 什么时候触发？→ 你的工具函数执行完毕，返回了结果。
+                     *   比如 "getWeather" 函数执行完了，返回 "北京晴天25度"。
+                     * toolExecution 从哪来？
+                     *   → 框架传的。里面包含了工具的名字、参数、和执行结果。
+                     * 这段代码做了什么？
+                     *   → 把工具执行结果包装成信封，推给前端。
+                     *     前端收到后可以展示一个天气卡片。
+                     */
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        // 把原始工具执行结果包装成统一的 ToolExecutedMessage 对象
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+
+                    /* ④ 完整响应回调：AI 整个回答结束时触发（所有 token 都生成完了）
+                     * 这段代码 做了什么？
+                     *   → 告诉 sink 管道："数据发完了，可以关管道了"。
+                     * 只执行一次
+                     */
+                    .onCompleteResponse((ChatResponse response) -> {
+                        // sink.complete() 表示flux"流结束了"，下游会收到完成信号
+                        sink.complete();
+                    })
+
+                    // ⑤ 错误回调：过程中发生任何异常时触发
+                    .onError((Throwable error) -> {
+                        error.printStackTrace();
+                        // sink.error() 表示"流出错了"，下游会收到错误信号
+                        sink.error(error);
+                    })
+
+                    // ⑥ 一切就绪，启动 TokenStream 开始执行！
+                    //    不调用 start()，上面的回调永远不会被触发
+                    .start();
+
+        });
+    }
+
     /**
      * 通用流式代码处理方法（使用 appId）
      *
