@@ -2,6 +2,7 @@ package com.yuzong.yuzongaicodemother.core.builder;
 
 import cn.hutool.core.util.RuntimeUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  * @since 2026/7/9 14:09
  */
 @Slf4j
+@Component //将该类注册为Spring管理的Bean
 public class VueProjectBuilder {
 
     /**
