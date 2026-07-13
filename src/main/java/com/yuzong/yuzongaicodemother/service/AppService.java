@@ -2,6 +2,7 @@ package com.yuzong.yuzongaicodemother.service;
 
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import com.yuzong.yuzongaicodemother.model.dto.app.AppAddRequest;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
 import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
@@ -69,4 +70,13 @@ public interface AppService extends IService<App> {
      * @param appUrl 应用访问URL
      */
     void generateAppScreenshotAsync(Long appId, String appUrl);
+
+    /**
+     * 6. 创建应用
+     *
+     * @param appAddRequest 创建应用的请求参数
+     * @param loginUser     登录用户
+     * @return 新建的应用ID
+     */
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 }
