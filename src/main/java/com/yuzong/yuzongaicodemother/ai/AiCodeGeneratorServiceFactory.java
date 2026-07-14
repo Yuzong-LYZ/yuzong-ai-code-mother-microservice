@@ -2,7 +2,7 @@ package com.yuzong.yuzongaicodemother.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.yuzong.yuzongaicodemother.ai.tools.FileWriteTool;
+import com.yuzong.yuzongaicodemother.ai.tools.*;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
@@ -78,6 +78,9 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private StreamingChatModel reasoningStreamingChatModel;
 
+    @Resource
+    private ToolManager toolManager;
+
 
 // 【备注】下面的数字，1. 2. 3. 是执行顺序，并非写的时候的顺序
     /**
@@ -139,7 +142,9 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(
+                            toolManager.getAllTools()
+                    )
                     // 处理工具调用幻觉问题
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()

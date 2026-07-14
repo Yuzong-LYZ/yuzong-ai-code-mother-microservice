@@ -1,10 +1,13 @@
 package com.yuzong.yuzongaicodemother.ai.tools;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONObject;
 import com.yuzong.yuzongaicodemother.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +20,8 @@ import java.nio.file.StandardOpenOption;
  * 支持 AI 通过工具调用的方式写入文件
  */
 @Slf4j
-public class FileWriteTool {
+@Component
+public class FileWriteTool extends BaseTool{
 
     /**
      * 这个langchain4j的Tool注解。--将方法暴露给Ai当工具用--参数为：该工具的名称和描述或说明书
@@ -69,5 +73,41 @@ public class FileWriteTool {
             log.error(errorMessage, e);
             return errorMessage;
         }
+    }
+
+    /**
+     * 获取工具英文名称
+     * @return 工具名称
+     */
+    @Override
+    public String getToolName() {
+        return "writeFile";
+    }
+
+    /**
+     * 获取工具中文名称
+     * @return 工具名称
+     */
+    @Override
+    public String getDisplayName() {
+        return "写入文件";
+    }
+
+    /**
+     * 生成工具调用结果
+     * @param arguments 工具调用参数
+     * @return 工具调用结果
+     */
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        String suffix = FileUtil.getSuffix(relativeFilePath);
+        String content = arguments.getStr("content");
+        return String.format("""
+                        [工具调用] %s %s
+                        ```%s
+                        %s
+                        ```
+                        """, getDisplayName(), relativeFilePath, suffix, content);
     }
 }

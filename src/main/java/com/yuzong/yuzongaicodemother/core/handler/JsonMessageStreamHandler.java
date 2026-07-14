@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.yuzong.yuzongaicodemother.ai.model.message.*;
+import com.yuzong.yuzongaicodemother.ai.tools.BaseTool;
+import com.yuzong.yuzongaicodemother.ai.tools.ToolManager;
 import com.yuzong.yuzongaicodemother.constant.AppConstant;
 import com.yuzong.yuzongaicodemother.core.builder.VueProjectBuilder;
 import com.yuzong.yuzongaicodemother.model.entity.User;
@@ -29,6 +31,8 @@ import java.util.Set;
 public class JsonMessageStreamHandler {
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * 处理 TokenStream（VUE_PROJECT）
@@ -90,11 +94,13 @@ public class JsonMessageStreamHandler {
             case TOOL_REQUEST -> {
                 ToolRequestMessage toolRequestMessage = JSONUtil.toBean(chunk, ToolRequestMessage.class);
                 String toolId = toolRequestMessage.getId(); // 拿到工具id
+                String toolName = toolRequestMessage.getName();
                 // 检查是否是第一次看到这个工具 ID
                 if (toolId != null && !seenToolIds.contains(toolId)) {
                     // 第一次调用这个工具，记录 ID 并完整返回工具信息
                     seenToolIds.add(toolId);
-                    return "\n\n[选择工具] 写入文件\n\n";
+                    BaseTool tool = toolManager.getTool(toolName);
+                    return tool.generateToolRequestResponse();
                 } else {
                     // 如果这个ID之前已经处理过了（流式传输中同一个请求可能会分多个chunk发过来），直接返回空字符串！
                     return "";
@@ -103,19 +109,16 @@ public class JsonMessageStreamHandler {
             case TOOL_EXECUTED -> {
                 // 1. 解析外层 JSON
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
+                String toolName = toolExecutedMessage.getName();
                 // 2. 解析内层 JSON（因为 arguments 本身也是一串 JSON 字符串）
                 JSONObject jsonObject = JSONUtil.parseObj(toolExecutedMessage.getArguments());
                 String relativeFilePath = jsonObject.getStr("relativeFilePath"); // 抠出文件路径（如 src/App.vue）
                 String suffix = FileUtil.getSuffix(relativeFilePath);            // 抠出后缀名（如 vue）
                 String content = jsonObject.getStr("content");                   // 抠出真正的 Vue 源代码！
+                // 根据工具名称获取工具实例并生成相应的结果格式
+                BaseTool tool = toolManager.getTool(toolName);
+                String result = tool.generateToolExecutedResult(jsonObject);
 
-                // 3. 拼装成漂亮的 Markdown 格式（带代码块高亮标记）
-                String result = String.format("""
-                        [工具调用] 写入文件 %s
-                        ```%s
-                        %s
-                        ```
-                        """, relativeFilePath, suffix, content);
                 // 输出前端和要持久化的内容
                 String output = String.format("\n\n%s\n\n", result);
 
