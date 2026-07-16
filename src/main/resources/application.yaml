@@ -41,4 +41,11 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
-
+# mermaid文本生图MCP生成架构图绘制工具
+# 备注：mac当中需要配置mmdc-path，否则idea获取不到
+# 路径获取：在终端输入 which mmdc
+# 去需要调用路径的位置调用mmdcPath：
+#    @Value("${mermaid.mmdc-path:mmdc}")
+#    private String mmdcPath;
+mermaid:
+  mmdc-path: /Users/yuzong/.nvm/versions/node/v20.20.2/bin/mmdc

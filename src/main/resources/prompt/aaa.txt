@@ -1,0 +1,16 @@
+
+
+帮我生成 LangGraph4j 工作流的代码
+
+## 工作流的流程描述
+
+// ... 补充具体的流程
+
+## 要求
+
+先生成基础的工作流结构代码，每个工作节点中只输出一句信息就够了，不用真正实现具体的业务逻辑。
+
+## 参考信息
+
+官方文档：@https://langgraph4j.github.io/langgraph4j/core/low_level/
+示例工作流实现：@https://github.com/langgraph4j/langgraph4j-examples/blob/main/langchain4j/adaptive-rag/src/main/java/dev/langchain4j/adaptiverag/AdaptiveRag.java
