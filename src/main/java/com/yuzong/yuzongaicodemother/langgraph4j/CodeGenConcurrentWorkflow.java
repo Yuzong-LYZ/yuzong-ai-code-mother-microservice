@@ -23,7 +23,7 @@ import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
 
 
 /**
- * 并发代码生成工作流
+ * 并发代码生成工作流（实际可用）
  */
 @Slf4j
 public class CodeGenConcurrentWorkflow {
