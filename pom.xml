@@ -126,6 +126,12 @@
             <artifactId>langgraph4j-core</artifactId>
             <version>1.6.0-rc2</version>
         </dependency>
+        <!-- LangGraph4j Studio ：实现运行 Langgraph4j 工作流的可视化交互和调试 -->
+        <dependency>
+            <groupId>org.bsc.langgraph4j</groupId>
+            <artifactId>langgraph4j-studio-springboot</artifactId>
+            <version>1.6.0-rc2</version>
+        </dependency>
 <!--        Caffeine本地缓存-->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
