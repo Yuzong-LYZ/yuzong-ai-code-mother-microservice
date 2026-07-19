@@ -1,6 +1,7 @@
 package com.yuzong.yuzongaicodemother.langgraph4j.state;
 
 import com.yuzong.yuzongaicodemother.langgraph4j.model.ImageResource;
+import com.yuzong.yuzongaicodemother.langgraph4j.model.QualityResult;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -51,6 +52,13 @@ public class WorkflowContext implements Serializable {
      * 增强后的提示词
      */
     private String enhancedPrompt;
+
+
+
+    /**
+     * 质量检查结果
+     */
+    private QualityResult qualityResult;
 
     /**
      * 代码生成类型
