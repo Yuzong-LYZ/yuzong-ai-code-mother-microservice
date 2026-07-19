@@ -1,5 +1,6 @@
 package com.yuzong.yuzongaicodemother.langgraph4j.state;
 
+import com.yuzong.yuzongaicodemother.langgraph4j.model.ImageCollectionPlan;
 import com.yuzong.yuzongaicodemother.langgraph4j.model.ImageResource;
 import com.yuzong.yuzongaicodemother.langgraph4j.model.QualityResult;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
@@ -53,12 +54,24 @@ public class WorkflowContext implements Serializable {
      */
     private String enhancedPrompt;
 
-
-
     /**
      * 质量检查结果
      */
     private QualityResult qualityResult;
+
+    /**
+     * 图片收集计划
+     */
+    private ImageCollectionPlan imageCollectionPlan;
+
+
+    /**
+     * 并发图片收集的中间结果字段
+     */
+    private List<ImageResource> contentImages; // 内容图片
+    private List<ImageResource> illustrations; // 插画
+    private List<ImageResource> diagrams; // 图表
+    private List<ImageResource> logos;
 
     /**
      * 代码生成类型
