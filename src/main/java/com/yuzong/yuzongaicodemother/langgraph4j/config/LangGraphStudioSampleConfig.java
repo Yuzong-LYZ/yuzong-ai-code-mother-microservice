@@ -7,7 +7,7 @@ import org.bsc.langgraph4j.studio.springboot.LangGraphFlow;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 可视化调试配置：
+ * 可视化调试配置：（不好用）
  *
  */
 @Configuration
