@@ -7,6 +7,7 @@ import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
+import com.yuzong.yuzongaicodemother.utils.SpringContextUtil;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -43,7 +44,7 @@ public class AiCodeGeneratorServiceFactory {
      *【注意】当我们注入ChatModel时，就将：在application.yaml配置的信息【ai模型】注入进chatModel里。（包括key，api等）
      * 备注：我们是用deepseek指向用 OpenAI 兼容接口的大模型来定义。模型名：deepseek-v4-flash
      */
-    @Resource
+    @Resource( name = "openAiChatModel")
     private ChatModel chatModel;
 
 
@@ -64,8 +65,6 @@ public class AiCodeGeneratorServiceFactory {
      *             如何知道Bean名？@Resource左侧有个绿色圆圈，点击就能看到有几个Bean符合。然后选择正确的Bean名。
      *             将容器名改为：openAiStreamingChatModel。即可解决
      */
-    @Resource
-    private StreamingChatModel openAiStreamingChatModel;
 
     // 补充：Redis 聊天记忆存储
     @Resource
@@ -74,9 +73,6 @@ public class AiCodeGeneratorServiceFactory {
     @Resource
     private ChatHistoryService chatHistoryService;
 
-    // 将刚刚在配置类创建并注册的Bean注入进来
-    @Resource
-    private StreamingChatModel reasoningStreamingChatModel;
 
     @Resource
     private ToolManager toolManager;
@@ -138,8 +134,11 @@ public class AiCodeGeneratorServiceFactory {
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
         // 根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {
-            // Vue 项目生成使用推理模型
-            case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
+            // Vue 项目生成使用推理流式模型
+             case VUE_PROJECT ->{
+                // 使用多例模式的 StreamingChatModel 解决并发问题
+                StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
+                yield AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
                     .tools(
@@ -150,12 +149,17 @@ public class AiCodeGeneratorServiceFactory {
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))
                     .build();
-            // HTML 和多文件【三件套】生成使用默认模型
-            case HTML, MULTI_FILE -> AiServices.builder(AiCodeGeneratorService.class)
+            }
+            // HTML 和多文件【三件套】生成使用普通流式模型
+            case HTML, MULTI_FILE -> {
+                // 使用多例模式的 StreamingChatModel 解决并发问题
+                StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+                yield AiServices.builder(AiCodeGeneratorService.class)
                     .chatModel(chatModel)
                     .streamingChatModel(openAiStreamingChatModel)
                     .chatMemory(chatMemory)
                     .build();
+            }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
                     "不支持的代码生成类型: " + codeGenType.getValue());
         };

@@ -1,5 +1,6 @@
 package com.yuzong.yuzongaicodemother.langgraph4j.node;
 import com.yuzong.yuzongaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.yuzong.yuzongaicodemother.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.yuzong.yuzongaicodemother.langgraph4j.state.WorkflowContext;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.utils.SpringContextUtil;
@@ -23,8 +24,9 @@ public class RouterNode {
             // 补充：智能路由节点逻辑
             CodeGenTypeEnum generationType;
             try {
-                // 获取AI路由服务
-                AiCodeGenTypeRoutingService routingService = SpringContextUtil.getBean(AiCodeGenTypeRoutingService.class);
+                // 获取AI路由服务工厂并创建新的路由服务实例
+                AiCodeGenTypeRoutingServiceFactory factory = SpringContextUtil.getBean(AiCodeGenTypeRoutingServiceFactory.class);
+                AiCodeGenTypeRoutingService routingService = factory.createAiCodeGenTypeRoutingService();
                 // 根据原始提示词进行智能路由
                 generationType = routingService.routeCodeGenType(context.getOriginalPrompt());
                 log.info("AI智能路由完成，选择类型: {} ({})", generationType.getValue(), generationType.getText());
