@@ -17,7 +17,7 @@ spring:
       #有账号密码的要设置账号密码
       password:
       ttl: 3600  # 过期时间：1小时
-#      database: 0   # 配置的时候无法赋值database所以这里不要了
+      database: 0   # 配置的时候无法赋值database所以这里不要了
   # redis管理session 配置--session放在redis的时间
   session:
     store-type: redis

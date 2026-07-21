@@ -9,7 +9,7 @@ import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 /**
  * HTML代码文件保存器
  *
- * @author yupi
+ * @author yuzong
  */
 public class HtmlCodeFileSaverTemplate extends CodeFileSaverTemplate<HtmlCodeResult> {
 
