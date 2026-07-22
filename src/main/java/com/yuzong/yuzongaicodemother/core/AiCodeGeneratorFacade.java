@@ -8,6 +8,8 @@ import com.yuzong.yuzongaicodemother.ai.model.MultiFileCodeResult;
 import com.yuzong.yuzongaicodemother.ai.model.message.AiResponseMessage;
 import com.yuzong.yuzongaicodemother.ai.model.message.ToolExecutedMessage;
 import com.yuzong.yuzongaicodemother.ai.model.message.ToolRequestMessage;
+import com.yuzong.yuzongaicodemother.constant.AppConstant;
+import com.yuzong.yuzongaicodemother.core.builder.VueProjectBuilder;
 import com.yuzong.yuzongaicodemother.core.parser.CodeParserExecutor;
 import com.yuzong.yuzongaicodemother.core.saver.CodeFileSaverExecutor;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
@@ -52,6 +54,8 @@ public class AiCodeGeneratorFacade {
 
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 统一入口：根据类型生成并保存代码（使用 appId）
@@ -107,7 +111,7 @@ public class AiCodeGeneratorFacade {
             case VUE_PROJECT -> {
                 // 修改成TokenStream并优化代码
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStream(tokenStream);
+                yield processTokenStream(tokenStream, appId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -124,9 +128,10 @@ public class AiCodeGeneratorFacade {
      * 备注：此乃模版代码。不需要理解
      *
      * @param tokenStream TokenStream 对象
+     * @param appId 应用 ID
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream,Long appId) {
         // Flux.create() = 创建一个"流管道"
         // sink = 管道的入口，你往里面塞什么，前端就能收到什么
         // 返回值 Flux<String> = 这个管道本身（交给 Spring WebFlux 推给前端）
@@ -206,6 +211,9 @@ public class AiCodeGeneratorFacade {
                      * 只执行一次
                      */
                     .onCompleteResponse((ChatResponse response) -> {
+                        // 执行vue项目构建（同步执行，确保预览时项目已经就绪）
+                        String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR+"/vue_project_"+appId;
+                        vueProjectBuilder.buildProject(projectPath);
                         // sink.complete() 表示flux"流结束了"，下游会收到完成信号
                         sink.complete();
                     })

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,7 +45,7 @@ public class VueProjectBuilder {
     }
 
     /**
-     * 构建 Vue 项目
+     * 构建 Vue 项目【同步】
      *
      * @param projectPath 项目根目录路径
      * @return 是否构建成功
@@ -128,47 +129,131 @@ public class VueProjectBuilder {
         return baseCommand;
     }
 
-
-
     /**
      * 通用执行命令 方法
+     * bug【已修复】：mac出现一些问题，比如：npm install 命令执行失败，
+     * 原因：他调用的是java原生代码，我们传入了命令后，他是直接去系统的path去找npm的可执行文件
+     *      但是，mac的npm可执行文件不在path中，所以他找不到，就执行失败
+     *      和MermaidDiagramTool类的mmdc那样。现在修复完就正常了。
+     * 解决方法：为 Mac/Linux 注入 npm 路径，这样他就知道在哪里找 npm 的可执行文件了
+     *
      *
      * @param workingDir     工作目录
-     * @param command        命令字符串
+     * @param command        命令字符串 (例如: "npm install")
      * @param timeoutSeconds 超时时间（秒）
      * @return 是否执行成功
      */
     private boolean executeCommand(File workingDir, String command, int timeoutSeconds) {
         try {
-
-            // 1. 调用java的Runtime去操作系统的终端执行命令
             log.info("在目录 {} 中执行命令: {}", workingDir.getAbsolutePath(), command);
-            Process process = RuntimeUtil.exec(
-                    null,
-                    workingDir, // 在哪个目录执行
-                    command.split("\\s+") // 执行什么命令-- 同时命令分割为数组
-            );
-            // 2. 等待进程完成，设置超时。
+
+            ProcessBuilder processBuilder;
+            if (isWindows()) {
+                processBuilder = new ProcessBuilder("cmd.exe", "/c", command);
+            } else {
+                processBuilder = new ProcessBuilder("/bin/sh", "-c", command);
+            }
+
+            processBuilder.directory(workingDir);
+            processBuilder.redirectErrorStream(true);
+
+            // ================= 核心修复：为 Mac/Linux 注入 npm 路径 =================
+            if (!isWindows()) {
+                Map<String, String> env = processBuilder.environment();
+                String currentPath = env.getOrDefault("PATH", "");
+                String userHome = System.getProperty("user.home");
+
+                // 1. 基础路径 (Apple Silicon 的 Homebrew / Intel Mac 的 Homebrew / 官方安装)
+                // 既然你的 brew 在 /opt/homebrew/bin，那 npm 肯定也在这里
+                StringBuilder extraPaths = new StringBuilder();
+                extraPaths.append("/opt/homebrew/bin:/usr/local/bin");
+
+                // 2. 动态扫描 nvm 安装的所有 Node 版本的 bin 目录 (作为兜底)
+                File nvmVersionsDir = new File(userHome, ".nvm/versions/node");
+                if (nvmVersionsDir.exists() && nvmVersionsDir.isDirectory()) {
+                    File[] versions = nvmVersionsDir.listFiles();
+                    if (versions != null) {
+                        for (File version : versions) {
+                            File binDir = new File(version, "bin");
+                            if (binDir.exists()) {
+                                extraPaths.append(":").append(binDir.getAbsolutePath());
+                            }
+                        }
+                    }
+                }
+
+                // 将新路径追加到现有 PATH 的最前面（优先级最高）
+                env.put("PATH", extraPaths + ":" + currentPath);
+                log.info("注入的 npm 路径包含: {}", extraPaths); // 方便你确认是否包含了 Homebrew 路径
+            }
+            // =====================================================================
+
+            Process process = processBuilder.start();
+
+            // 读取输出（必须读取，否则 npm 输出过多会导致进程卡死）
+            StringBuilder outputBuilder = new StringBuilder();
+            try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    outputBuilder.append(line).append("\n");
+                    log.debug("[CMD OUTPUT] {}", line);
+                }
+            }
+
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            // 2.1 如果超时，强制终止进程
+
             if (!finished) {
                 log.error("命令执行超时（{}秒），强制终止进程", timeoutSeconds);
                 process.destroyForcibly();
                 return false;
             }
-            // 2.2 检查是否完成命令。如果命令执行成功，则返回true，否则false
+
             int exitCode = process.exitValue();
             if (exitCode == 0) {
                 log.info("命令执行成功: {}", command);
                 return true;
             } else {
-                log.error("命令执行失败，退出码: {}", exitCode);
+                // 失败时，把终端的实际报错输出打印出来，方便排查
+                log.error("命令执行失败，退出码: {}，终端输出:\n{}", exitCode, outputBuilder);
                 return false;
             }
+
         } catch (Exception e) {
-            log.error("执行命令失败: {}, 错误信息: {}", command, e.getMessage());
+            log.error("执行命令失败: {}, 错误信息: {}", command, e.getMessage(), e);
             return false;
         }
     }
+//    private boolean executeCommand(File workingDir, String command, int timeoutSeconds) {
+//        try {
+//
+//            // 1. 调用java的Runtime去操作系统的终端执行命令
+//            log.info("在目录 {} 中执行命令: {}", workingDir.getAbsolutePath(), command);
+//            Process process = RuntimeUtil.exec(
+//                    null,
+//                    workingDir, // 在哪个目录执行
+//                    command.split("\\s+") // 执行什么命令-- 同时命令分割为数组
+//            );
+//            // 2. 等待进程完成，设置超时。
+//            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+//            // 2.1 如果超时，强制终止进程
+//            if (!finished) {
+//                log.error("命令执行超时（{}秒），强制终止进程", timeoutSeconds);
+//                process.destroyForcibly();
+//                return false;
+//            }
+//            // 2.2 检查是否完成命令。如果命令执行成功，则返回true，否则false
+//            int exitCode = process.exitValue();
+//            if (exitCode == 0) {
+//                log.info("命令执行成功: {}", command);
+//                return true;
+//            } else {
+//                log.error("命令执行失败，退出码: {}", exitCode);
+//                return false;
+//            }
+//        } catch (Exception e) {
+//            log.error("执行命令失败: {}, 错误信息: {}", command, e.getMessage());
+//            return false;
+//        }
+//    }
 
 }
