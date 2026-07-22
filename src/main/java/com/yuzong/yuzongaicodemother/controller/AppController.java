@@ -24,6 +24,7 @@ import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -222,6 +223,17 @@ public class AppController {
      * @return 精选应用列表
      */
     @PostMapping("/good/list/page/vo")
+    /**
+     * 加了这个注解，触发redis缓存
+     * value: 缓存的名称，可以自定义
+     * key: 调用我们自己的工具类生成缓存key
+     * condition: 缓存的条件，可以使用SpEL表达式，这里表示只有当页码小于等于10时才缓存
+     */
+    @Cacheable(
+            value = "good_app_page",
+            key = "T(com.yuzong.yuzongaicodemother.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum <= 10"
+    )
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         // 限制每页最多 20 个
