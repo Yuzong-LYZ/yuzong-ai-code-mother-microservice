@@ -3,6 +3,7 @@ package com.yuzong.yuzongaicodemother.ai;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.yuzong.yuzongaicodemother.ai.guardrail.PromptSafetyInputGuardrail;
+import com.yuzong.yuzongaicodemother.ai.guardrail.RetryOutputGuardrail;
 import com.yuzong.yuzongaicodemother.ai.tools.*;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
@@ -150,6 +151,7 @@ public class AiCodeGeneratorServiceFactory {
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))
                     .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
+//                    .outputGuardrails(new RetryOutputGuardrail()) // 使用输出护轨 重试，为了流式输出，不能使用
                     .build();
             }
             // HTML 和多文件【三件套】生成使用普通流式模型
@@ -161,6 +163,7 @@ public class AiCodeGeneratorServiceFactory {
                     .streamingChatModel(openAiStreamingChatModel)
                     .chatMemory(chatMemory)
                     .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
+//                    .outputGuardrails(new RetryOutputGuardrail()) // 使用输出护轨 重试，为了流式输出，不能使用
                     .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
