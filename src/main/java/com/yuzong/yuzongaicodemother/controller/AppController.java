@@ -19,6 +19,8 @@ import com.yuzong.yuzongaicodemother.model.dto.app.*;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
+import com.yuzong.yuzongaicodemother.ratelimiter.annotation.RateLimit;
+import com.yuzong.yuzongaicodemother.ratelimiter.enums.RateLimitType;
 import com.yuzong.yuzongaicodemother.service.ProjectDownloadService;
 import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
@@ -65,6 +67,8 @@ public class AppController {
      * @param request 请求对象
      * @return 生成结果流
      */
+    // 限流注解，每分钟最多5次请求
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
                                                        @RequestParam String message,
@@ -222,7 +226,6 @@ public class AppController {
      * @param appQueryRequest 查询请求
      * @return 精选应用列表
      */
-    @PostMapping("/good/list/page/vo")
     /**
      * 加了这个注解，触发redis缓存
      * value: 缓存的名称，可以自定义
@@ -234,6 +237,7 @@ public class AppController {
             key = "T(com.yuzong.yuzongaicodemother.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
             condition = "#appQueryRequest.pageNum <= 10"
     )
+    @PostMapping("/good/list/page/vo")
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         // 限制每页最多 20 个
