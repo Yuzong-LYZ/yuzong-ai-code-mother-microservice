@@ -1,23 +1,29 @@
 package com.yuzong.yuzongaicodemother.config;
 
+import com.yuzong.yuzongaicodemother.monitor.AiModelMonitorListener;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import jakarta.annotation.Resource;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
+import java.util.List;
+
 /**
  * 流式推理模型配置
  * 备注：这里其实和在工厂类（AiCodeGeneratorServiceFactory）配置的是一样的，或者说差不多
- *      但是，如果我们后续需要添加一些新的模型，就可以直接在这里添加。
+ * 但是，如果我们后续需要添加一些新的模型，就可以直接在这里添加。
  *
  */
 @Configuration
 @ConfigurationProperties(prefix = "langchain4j.open-ai.reasoning-streaming-chat-model")
 @Data
 public class ReasoningStreamingChatModelConfig {
+    @Resource
+    private AiModelMonitorListener aiModelMonitorListener;
 
     private String baseUrl;
 
@@ -51,6 +57,7 @@ public class ReasoningStreamingChatModelConfig {
                 .temperature(temperature)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 }

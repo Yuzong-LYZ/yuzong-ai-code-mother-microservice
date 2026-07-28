@@ -168,6 +168,22 @@
             <artifactId>dashscope-sdk-java</artifactId>
             <version>2.21.1</version>
         </dependency>
+<!--    下面2个是监控依赖
+        1. 第一个是暴露各种管理和监控端点。【清军卖国】
+        2. 第二个里面有个：micrometer-core，他是收集指标的引擎。【国外买清军情报】
+        3. 第二个，专门收集的指标数据转换为 Prometheus 格式。【情报翻译】
+        4. Prometheus是专门数据拉取。【情报传递去外国】
+-->
+        <!-- Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- 普罗米修斯：Prometheus Registry -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 
 
     </dependencies>

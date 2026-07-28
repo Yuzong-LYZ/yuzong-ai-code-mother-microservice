@@ -49,3 +49,13 @@ knife4j:
 #    private String mmdcPath;
 mermaid:
   mmdc-path: /Users/yuzong/.nvm/versions/node/v20.20.2/bin/mmdc
+
+# 监控：
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

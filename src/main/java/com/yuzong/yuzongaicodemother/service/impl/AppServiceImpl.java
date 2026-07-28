@@ -16,15 +16,17 @@ import com.yuzong.yuzongaicodemother.core.handler.StreamHandlerExecutor;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
+import com.yuzong.yuzongaicodemother.mapper.AppMapper;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppAddRequest;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
-import com.yuzong.yuzongaicodemother.mapper.AppMapper;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
 import com.yuzong.yuzongaicodemother.model.vo.UserVO;
+import com.yuzong.yuzongaicodemother.monitor.MonitorContext;
+import com.yuzong.yuzongaicodemother.monitor.MonitorContextHolder;
 import com.yuzong.yuzongaicodemother.service.AppService;
 import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
 import com.yuzong.yuzongaicodemother.service.ScreenshotService;
@@ -50,7 +52,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppService{
+public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
     @Resource
     private UserService userService;
     @Resource
@@ -95,11 +97,21 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         }
         // 5. 补充：在调用ai服务前，先保存用户信息到数据库中
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
-
-        // 6. 调用 AI 生成代码(流式)
+        // 6. 补充：设置监控上下文
+        MonitorContextHolder.setContext(
+                MonitorContext.builder()
+                        .userId(loginUser.getId().toString())
+                        .appId(appId.toString())
+                        .build()
+        );
+        // 7. 调用 AI 生成代码（流式）
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
-        // 7. 收集 AI 响应内容并在完成后记录到对话历史
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        // 8. 修改1次：收集 AI 响应内容并在完成后记录到对话历史
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
+                .doFinally(signalType -> {
+                    // 流结束时清理（无论成功/失败/取消）
+                    MonitorContextHolder.clearContext();
+                });
 
     }
 
@@ -192,9 +204,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
      * 3. 等部署了自己的域名之后：http://www.yuzong.cn/deployKey
      * 4. 哪怕这样，也不算真的部署，只是将项目部署到我自己的域名/随机deployKey/下而已
      * 5. 如果是要正儿八经的部署：也就是别人吧项目部署到他自己的域名下会比较麻烦，加上我们现在用的ai也是比较便宜的。也不是真的要上线。
-     *    而且正常也不会有人用我这个项目来创建一个正儿八经的项目，所以就先这样吧。
-     *    暂时不考虑部署到他自己的域名下 的功能
-     *    暂时也不考虑部署升级为子域名模式
+     * 而且正常也不会有人用我这个项目来创建一个正儿八经的项目，所以就先这样吧。
+     * 暂时不考虑部署到他自己的域名下 的功能
+     * 暂时也不考虑部署升级为子域名模式
      *
      * @param appId     应用 ID
      * @param loginUser 登录用户
@@ -266,7 +278,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         // 10. 得到可访问的 URL
         // %s就是占位符号。最终结果：http://localhost:8080/deployKey/
-        String appDeployUrl =  String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        String appDeployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
         // 11. 异步生成截图并更新应用封面
         generateAppScreenshotAsync(appId, appDeployUrl);
         return appDeployUrl;
@@ -350,8 +362,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         // 删除应用
         return super.removeById(id);
     }
-
-
 
 
 }
