@@ -1,17 +1,16 @@
-package com.yuzong.yuzongaicodemother.config;
+package com.yuzong.yuzongaicodemother.ai.config;
 
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.context.annotation.Scope;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 
- /**
-  * 智能路由模型配置类
-  * 智能路由用的模型
+/**
+ * 智能路由模型配置类
+ * 智能路由用的模型
  */
 @Configuration
 @ConfigurationProperties(prefix = "langchain4j.open-ai.routing-chat-model")

@@ -1,4 +1,4 @@
-package com.yuzong.yuzongaicodemother.config;
+package com.yuzong.yuzongaicodemother.ai.config;
 
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import lombok.Data;
@@ -31,7 +31,7 @@ public class RedisChatMemoryStoreConfig {
      * 但是我们在new这个遥控器的时候，需要把电视的配置，蓝牙连接什么的都给遥控器配置好。
      * 然后我们就能通过这个遥控器去控制电视了。
      * 备注：这玩意只是形式看起来有点不眼熟。实际上就是一个实例化对象。RedisChatMemoryStore这个类的实例化对象，仅此而已。
-     *      不是什么代理对象之类的。你也可以叫做客户端，也可以叫做遥控器。但是不能说他等同代理和代理对象。不过在不严谨的情况下可以。
+     * 不是什么代理对象之类的。你也可以叫做客户端，也可以叫做遥控器。但是不能说他等同代理和代理对象。不过在不严谨的情况下可以。
      *
      * @return RedisChatMemoryStore 实例化对象
      */
