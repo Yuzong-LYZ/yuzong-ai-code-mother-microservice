@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.yuzong</groupId>
+    <artifactId>yuzong-ai-code-mother-microservice</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <!-- 打包方式为 pom，说明这是一个“父工程”，它本身不包含代码，只负责统一管理子模块和依赖版本 -->
+    <packaging>pom</packaging>
+
+    <!-- 定义当前父工程下包含哪些子模块，Maven 在构建时会按顺序处理这些模块 -->
+    <modules>
+        <module>yuzong-ai-code-common</module>   <!-- 公共模块：注解、异常处理、工具类、常量、公共响应类 -->
+        <module>yuzong-ai-code-model</module>    <!-- 实体模型模块：实体类 (Entity)、DTO、VO、AI模型类 -->
+        <module>yuzong-ai-code-client</module>   <!-- 服务接口模块：服务接口定义，内部调用契约 -->
+        <module>yuzong-ai-code-user</module>     <!-- 用户服务：用户管理、权限认证、用户信息维护 -->
+        <module>yuzong-ai-code-app</module>      <!-- 应用服务：应用管理、聊天历史、项目下载、代码解析保存 -->
+        <module>yuzong-ai-code-ai</module>       <!-- AI代码生成：AI代码生成、模型管理 -->
+        <module>yuzong-ai-code-screenshot</module> <!-- 截图服务：网页截图、图片处理、对象存储 -->
+    </modules>
+
+    <!-- 指定版本号 -->
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- 统一管理核心框架的版本号，子模块引用时不需要再写版本号，保证全局版本一致 -->
+        <spring-boot.version>3.5.3</spring-boot.version>
+        <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <spring-cloud-alibaba.version>2023.0.1.0</spring-cloud-alibaba.version>
+    </properties>
+
+    <!-- 全局依赖 -->
+    <dependencies>
+        <!-- Spring Boot Web 核心启动器：提供内嵌 Tomcat、Spring MVC、RESTful API 支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot AOP 启动器：提供面向切面编程支持，常用于实现日志记录、权限校验、接口限流等 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Knife4j 接口文档工具：基于 OpenAPI 3 规范，专门为 Spring Boot 3 (Jakarta) 提供的 Swagger 增强 UI，方便前端调试接口 -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>4.4.0</version>
+        </dependency>
+
+        <!-- Hutool 工具包 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.38</version>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.38</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Spring Boot 测试启动器 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- 依赖版本管理 (BOM - Bill of Materials)  -->
+    <!-- 这里只声明依赖和版本，不实际引入。子模块如果需要这些依赖，只需写 groupId 和 artifactId，版本会自动从这里继承 -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot 官方依赖清单：统一管理 Spring Boot 生态（如 Web, Data, Security 等）的所有第三方依赖版本，避免版本冲突 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud 官方依赖清单：统一管理微服务组件（如 OpenFeign, Gateway, LoadBalancer 等）的版本 -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud Alibaba 依赖清单：统一管理阿里系微服务组件（如 Nacos 注册/配置中心, Sentinel 限流, Seata 分布式事务等）的版本 -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- 构建配置与插件 -->
+    <build>
+        <plugins>
+            <!-- 【必须配置】Maven 编译插件：控制 Java 代码的编译行为 -->
+            <!--  否则运行时无法获取参数名，导致Get请求失败 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <!-- 重点：开启参数名保留。编译时保留方法参数的真实名称。
+                         这在 Spring MVC (如 @RequestParam 不写 value) 和 MyBatis 中非常有用，否则运行时只能拿到 arg0, arg1 -->
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot Maven 插件：用于将项目打包成可独立运行的 Fat Jar（包含所有依赖），并支持通过 `mvn spring-boot:run` 启动项目 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
