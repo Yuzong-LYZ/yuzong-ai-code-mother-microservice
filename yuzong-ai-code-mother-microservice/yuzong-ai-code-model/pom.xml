@@ -17,4 +17,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <!--         引入公共模块common-->
+        <dependency>
+            <groupId>com.yuzong</groupId>
+            <artifactId>yuzong-ai-code-common</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
 </project>
