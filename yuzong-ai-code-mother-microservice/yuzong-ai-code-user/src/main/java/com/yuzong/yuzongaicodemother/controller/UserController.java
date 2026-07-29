@@ -11,17 +11,13 @@ import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
 import com.yuzong.yuzongaicodemother.model.dto.user.*;
+import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.vo.LoginUserVO;
 import com.yuzong.yuzongaicodemother.model.vo.UserVO;
+import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import com.yuzong.yuzongaicodemother.model.entity.User;
-import com.yuzong.yuzongaicodemother.service.UserService;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -36,6 +32,7 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
     /**
      * 1. 用户注册
      *
@@ -98,6 +95,7 @@ public class UserController {
 
 //    备注：5-10的controller并没有专门的service方法。
 //         也就是说5-10的controller中，直接写业务逻辑了。
+
     /**
      * 5. 创建用户(管理员)
      */
