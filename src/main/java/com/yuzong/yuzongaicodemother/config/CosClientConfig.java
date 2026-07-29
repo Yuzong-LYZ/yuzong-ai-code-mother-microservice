@@ -6,17 +6,23 @@ import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
 import com.qcloud.cos.region.Region;
 import lombok.Data;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * 腾讯云COS配置类
- * 
+ *
  * @author yuzong
  */
 @Configuration
 @ConfigurationProperties(prefix = "cos.client")
+// 条件注解，只有配置文件中同时存在这 5 个属性时，这个配置类才会生效并被加载到 Spring 容器中
+@ConditionalOnProperty(
+        prefix = "cos.client",
+        name = {"host", "secretId", "secretKey", "region", "bucket"}
+)
 @Data
 public class CosClientConfig {
 

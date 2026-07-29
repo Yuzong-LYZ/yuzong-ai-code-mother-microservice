@@ -6,6 +6,7 @@ import com.qcloud.cos.model.PutObjectResult;
 import com.yuzong.yuzongaicodemother.config.CosClientConfig;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -15,6 +16,7 @@ import java.io.File;
  *
  */
 @Component
+@ConditionalOnBean(COSClient.class)// 只有当 Spring 容器中存在 COSClient 这个 Bean 时，CosManager 才会被创建
 @Slf4j
 public class CosManager {
 
