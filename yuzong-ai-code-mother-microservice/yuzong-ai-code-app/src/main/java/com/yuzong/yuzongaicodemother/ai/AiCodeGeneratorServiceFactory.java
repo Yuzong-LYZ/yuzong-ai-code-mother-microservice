@@ -3,8 +3,7 @@ package com.yuzong.yuzongaicodemother.ai;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.yuzong.yuzongaicodemother.ai.guardrail.PromptSafetyInputGuardrail;
-import com.yuzong.yuzongaicodemother.ai.guardrail.RetryOutputGuardrail;
-import com.yuzong.yuzongaicodemother.ai.tools.*;
+import com.yuzong.yuzongaicodemother.ai.tools.ToolManager;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
@@ -27,15 +26,15 @@ import java.time.Duration;
  * 【工厂模式】：核心思想就一句话：你只管用，别管怎么造。---传入 appId，工厂返回对应的 AI 服务实例。
  * 【备注】：实例：任何对象都是实例！普通的new出来的也是实例，动态代理对象也是实例。这里返回的实例实际上是代理对象。
  * 【该类最新逻辑（旧逻辑已经删除，详细看2026/7/6 17:12的代码）】：
- *  1. 需要用到ai服务的类--注入本工厂类，通过 getAiCodeGeneratorService(appId) 获取 AI 服务代理对象
- *  2. 工厂内部使用 ffeine 本地缓存管理代理对象，实现对话记忆的隔离与复用：
- *       - 缓存命中：直接返回已有的 AiCodeGeneratorService 代理对象（保留对话记忆）
- *       - 缓存未命中：自动创建新的AiCodeGeneratorService 代理对象，存入缓存后返回
- *  3. 无论缓存是否命中，调用方始终能拿到一个可用的代理对象
- *  4. 使用代理对象的方法。不过这些方法被我统一包装到AiCodeGeneratorFacade门面类当中。外面的类直接调用门面类即可。
- *  备注：这个代理对象，代理的是：AiCodeGeneratorService接口
- *  备注：将本来的Bean注解删除的情况下，也就是：本类的aiCodeGeneratorService方法删除
- *
+ * 1. 需要用到ai服务的类--注入本工厂类，通过 getAiCodeGeneratorService(appId) 获取 AI 服务代理对象
+ * 2. 工厂内部使用 ffeine 本地缓存管理代理对象，实现对话记忆的隔离与复用：
+ * - 缓存命中：直接返回已有的 AiCodeGeneratorService 代理对象（保留对话记忆）
+ * - 缓存未命中：自动创建新的AiCodeGeneratorService 代理对象，存入缓存后返回
+ * 3. 无论缓存是否命中，调用方始终能拿到一个可用的代理对象
+ * 4. 使用代理对象的方法。不过这些方法被我统一包装到AiCodeGeneratorFacade门面类当中。外面的类直接调用门面类即可。
+ * 备注：这个代理对象，代理的是：AiCodeGeneratorService接口
+ * 备注：将本来的Bean注解删除的情况下，也就是：本类的aiCodeGeneratorService方法删除
+ * <p>
  * todo：上述流程已经不适用。因为后续加了别的东西。后续有时间再看看要不要重新写个流程
  */
 @Configuration
@@ -43,29 +42,29 @@ import java.time.Duration;
 public class AiCodeGeneratorServiceFactory {
 
     /**
-     *【注意】当我们注入ChatModel时，就将：在application.yaml配置的信息【ai模型】注入进chatModel里。（包括key，api等）
+     * 【注意】当我们注入ChatModel时，就将：在application.yaml配置的信息【ai模型】注入进chatModel里。（包括key，api等）
      * 备注：我们是用deepseek指向用 OpenAI 兼容接口的大模型来定义。模型名：deepseek-v4-flash
      */
-    @Resource( name = "openAiChatModel")
+    @Resource(name = "openAiChatModel")
     private ChatModel chatModel;
 
 
     /**
      * 补充：流式聊天模型
-     *  Bug备注：
-     *     1. 这里我们@Resource他：【StreamingChatModel streamingChatModel;】== 创建一个 streamingChatModel的容器用来装Bean
-     *        备注：这是langchain4j自动配置的。这个Bean也是langchain4j自动创建的。我们只是@Resource他。
-     *     2. 我们在ReasoningStreamingChatModelConfig（后续称为A配置类）类中的：
-     *        StreamingChatModel reasoningStreamingChatModel()方法上@Bean标签 == 注册并创建了一个reasoningStreamingChatModel的Bean
-     *     3. 最终结果：
-     *        就本来就有一个Bean，后面我们手动创建了一个Bean，糟糕的是，这两个Bean都是StreamingChatModel类型。
-     *        更糟糕的是：现在我们只有这一个StreamingChatModel类型的装Bean的容器。
-     *        更加糟糕的是：现在两个Bean的类型一样，但是Bean名不同，且Bean名和现在能装这个类型的Bean容器的名称，没有一个对的上（相同）。
-     *        spring不知道到底该将哪个Bean注入到现在这个容器当中。
-     *        最终就会【报错】
-     *     解决方案：我们将我们这个容器的名称改为：和langchain4j自动创建的Bean名一致。就自动装入langchain4j的那个Bean了。
-     *             如何知道Bean名？@Resource左侧有个绿色圆圈，点击就能看到有几个Bean符合。然后选择正确的Bean名。
-     *             将容器名改为：openAiStreamingChatModel。即可解决
+     * Bug备注：
+     * 1. 这里我们@Resource他：【StreamingChatModel streamingChatModel;】== 创建一个 streamingChatModel的容器用来装Bean
+     * 备注：这是langchain4j自动配置的。这个Bean也是langchain4j自动创建的。我们只是@Resource他。
+     * 2. 我们在ReasoningStreamingChatModelConfig（后续称为A配置类）类中的：
+     * StreamingChatModel reasoningStreamingChatModel()方法上@Bean标签 == 注册并创建了一个reasoningStreamingChatModel的Bean
+     * 3. 最终结果：
+     * 就本来就有一个Bean，后面我们手动创建了一个Bean，糟糕的是，这两个Bean都是StreamingChatModel类型。
+     * 更糟糕的是：现在我们只有这一个StreamingChatModel类型的装Bean的容器。
+     * 更加糟糕的是：现在两个Bean的类型一样，但是Bean名不同，且Bean名和现在能装这个类型的Bean容器的名称，没有一个对的上（相同）。
+     * spring不知道到底该将哪个Bean注入到现在这个容器当中。
+     * 最终就会【报错】
+     * 解决方案：我们将我们这个容器的名称改为：和langchain4j自动创建的Bean名一致。就自动装入langchain4j的那个Bean了。
+     * 如何知道Bean名？@Resource左侧有个绿色圆圈，点击就能看到有几个Bean符合。然后选择正确的Bean名。
+     * 将容器名改为：openAiStreamingChatModel。即可解决
      */
 
     // 补充：Redis 聊天记忆存储
@@ -120,8 +119,8 @@ public class AiCodeGeneratorServiceFactory {
     /**
      * 2. 创建新的 AI 服务代理对象
      * 【核心】return部分：
-     *        是langchain4j的核心api，他会自动利用 Java 动态代理创建一个代理对象，代理AiCodeGeneratorService接口的代理对象。
-     *        这个对象自动实现了 AiCodeGeneratorService接口。因为我们传入了chatModel。所以自带ai模型
+     * 是langchain4j的核心api，他会自动利用 Java 动态代理创建一个代理对象，代理AiCodeGeneratorService接口的代理对象。
+     * 这个对象自动实现了 AiCodeGeneratorService接口。因为我们传入了chatModel。所以自带ai模型
      * 【缺点】：他最后返回的是字符串，所以后续需要利用langchain4j的结构化输出。以及将输出结果解析出来保存到本地文件中【已优化】。
      */
     private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
@@ -137,34 +136,34 @@ public class AiCodeGeneratorServiceFactory {
         // 根据代码生成类型选择不同的模型配置
         return switch (codeGenType) {
             // Vue 项目生成使用推理流式模型
-             case VUE_PROJECT ->{
+            case VUE_PROJECT -> {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
-                    .streamingChatModel(reasoningStreamingChatModel)
-                    .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(
-                            toolManager.getAllTools()
-                    )
-                    // 处理工具调用幻觉问题
-                    .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                            toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
-                    ))
-                    .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
+                        .streamingChatModel(reasoningStreamingChatModel)
+                        .chatMemoryProvider(memoryId -> chatMemory)
+                        .tools(
+                                toolManager.getAllTools()
+                        )
+                        // 处理工具调用幻觉问题
+                        .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
+                                toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
+                        ))
+                        .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
 //                    .outputGuardrails(new RetryOutputGuardrail()) // 使用输出护轨 重试，为了流式输出，不能使用
-                    .build();
+                        .build();
             }
             // HTML 和多文件【三件套】生成使用普通流式模型
             case HTML, MULTI_FILE -> {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
-                    .chatModel(chatModel)
-                    .streamingChatModel(openAiStreamingChatModel)
-                    .chatMemory(chatMemory)
-                    .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
+                        .chatModel(chatModel)
+                        .streamingChatModel(openAiStreamingChatModel)
+                        .chatMemory(chatMemory)
+                        .inputGuardrails(new PromptSafetyInputGuardrail()) // 使用护轨
 //                    .outputGuardrails(new RetryOutputGuardrail()) // 使用输出护轨 重试，为了流式输出，不能使用
-                    .build();
+                        .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
                     "不支持的代码生成类型: " + codeGenType.getValue());
@@ -173,7 +172,7 @@ public class AiCodeGeneratorServiceFactory {
 
 
     /**
-     *  构建缓存键
+     * 构建缓存键
      */
     private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType) {
         return appId + "_" + codeGenType.getValue();

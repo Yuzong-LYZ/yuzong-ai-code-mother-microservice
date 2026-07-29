@@ -4,7 +4,6 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppAddRequest;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
-import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;

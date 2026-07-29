@@ -4,8 +4,6 @@ import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 
-import static com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum.MULTI_FILE;
-
 /**
  * 代码解析执行器
  * 根据代码生成类型执行相应的解析逻辑

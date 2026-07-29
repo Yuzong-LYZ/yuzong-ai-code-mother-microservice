@@ -23,9 +23,9 @@ public class ProjectDownloadServiceImpl implements ProjectDownloadService {
     /**
      * 将项目目录打包下载为 zip 文件
      *
-     * @param projectPath       项目目录路径
-     * @param downloadFileName  下载的文件名（不带.zip后缀）
-     * @param response          HTTP 响应对象
+     * @param projectPath      项目目录路径
+     * @param downloadFileName 下载的文件名（不带.zip后缀）
+     * @param response         HTTP 响应对象
      */
     @Override
     public void downloadProjectAsZip(String projectPath, String downloadFileName, HttpServletResponse response) {

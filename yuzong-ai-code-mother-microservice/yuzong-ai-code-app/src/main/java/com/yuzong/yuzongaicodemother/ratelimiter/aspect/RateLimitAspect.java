@@ -2,9 +2,9 @@ package com.yuzong.yuzongaicodemother.ratelimiter.aspect;
 
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
+import com.yuzong.yuzongaicodemother.innerservice.InnerUserService;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.ratelimiter.annotation.RateLimit;
-import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -33,9 +33,6 @@ import java.time.Duration;
 public class RateLimitAspect {
     @Resource
     private RedissonClient redissonClient;
-    @Resource
-    private UserService userService;
-
 
 
     /**
@@ -89,7 +86,7 @@ public class RateLimitAspect {
                     ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
                     if (attributes != null) {
                         HttpServletRequest request = attributes.getRequest();
-                        User loginUser = userService.getLoginUser(request);
+                        User loginUser = InnerUserService.getLoginUser(request);
                         keyBuilder.append("user:").append(loginUser.getId());
                     } else {
                         // 无法获取请求上下文，使用IP限流
@@ -109,7 +106,6 @@ public class RateLimitAspect {
         }
         return keyBuilder.toString();
     }
-
 
 
     private String getClientIP() {

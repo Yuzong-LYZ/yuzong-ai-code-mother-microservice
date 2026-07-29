@@ -8,10 +8,10 @@ import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.yuzong.yuzongaicodemother.constant.UserConstant;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
+import com.yuzong.yuzongaicodemother.mapper.ChatHistoryMapper;
 import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yuzong.yuzongaicodemother.model.entity.App;
 import com.yuzong.yuzongaicodemother.model.entity.ChatHistory;
-import com.yuzong.yuzongaicodemother.mapper.ChatHistoryMapper;
 import com.yuzong.yuzongaicodemother.model.entity.User;
 import com.yuzong.yuzongaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.yuzong.yuzongaicodemother.service.AppService;
@@ -34,7 +34,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
-public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHistory>  implements ChatHistoryService{
+public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHistory> implements ChatHistoryService {
     @Resource
     @Lazy
     private AppService appService;
@@ -43,10 +43,10 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     /**
      * 1. 添加对话消息记录
      *
-     * @param appId     应用ID
-     * @param message   消息内容
+     * @param appId       应用ID
+     * @param message     消息内容
      * @param messageType 消息类型
-     * @param userId    用户ID
+     * @param userId      用户ID
      * @return 是否添加成功
      */
     @Override
@@ -127,10 +127,10 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     /**
      * 4. 分页获取app应用的对话历史(游标查询服务方法)
      *
-     * @param appId         应用ID
-     * @param pageSize      页面大小
-     * @param lastCreateTime  lastCreateTime
-     * @param loginUser     登录用户
+     * @param appId          应用ID
+     * @param pageSize       页面大小
+     * @param lastCreateTime lastCreateTime
+     * @param loginUser      登录用户
      * @return 对话历史分页列表
      */
     @Override
@@ -156,13 +156,14 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
     // 新
+
     /**
      * 5.将对话历史从数据库加载到redis中（记忆）中
      * 备注：MessageWindowChatMemory的add不是“加载（Load）”到内存，而是“追加（Add）”到内存，并且“同步写入”到 Redis中
      *
-     * @param appId         应用ID
-     * @param chatMemory    对话记忆
-     * @param maxCount      最大加载条数
+     * @param appId      应用ID
+     * @param chatMemory 对话记忆
+     * @param maxCount   最大加载条数
      * @return 加载的条数
      */
     @Override

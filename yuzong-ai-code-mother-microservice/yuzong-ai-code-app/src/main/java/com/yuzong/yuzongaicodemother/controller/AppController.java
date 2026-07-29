@@ -5,7 +5,6 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
-import com.yuzong.yuzongaicodemother.ai.AiCodeGenTypeRoutingService;
 import com.yuzong.yuzongaicodemother.annotation.AuthCheck;
 import com.yuzong.yuzongaicodemother.common.BaseResponse;
 import com.yuzong.yuzongaicodemother.common.DeleteRequest;
@@ -15,14 +14,15 @@ import com.yuzong.yuzongaicodemother.constant.UserConstant;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
+import com.yuzong.yuzongaicodemother.innerservice.InnerUserService;
 import com.yuzong.yuzongaicodemother.model.dto.app.*;
+import com.yuzong.yuzongaicodemother.model.entity.App;
 import com.yuzong.yuzongaicodemother.model.entity.User;
-import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
 import com.yuzong.yuzongaicodemother.ratelimiter.annotation.RateLimit;
 import com.yuzong.yuzongaicodemother.ratelimiter.enums.RateLimitType;
+import com.yuzong.yuzongaicodemother.service.AppService;
 import com.yuzong.yuzongaicodemother.service.ProjectDownloadService;
-import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,9 +30,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.yuzong.yuzongaicodemother.model.entity.App;
-import com.yuzong.yuzongaicodemother.service.AppService;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
@@ -52,9 +49,7 @@ public class AppController {
     @Resource
     private AppService appService;
 
-    @Resource
-    private UserService userService;
-
+   
     @Resource
     private ProjectDownloadService projectDownloadService;
 
@@ -77,7 +72,7 @@ public class AppController {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
         // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         // 调用服务生成代码（流式）
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         // 转换为 ServerSentEvent 格式
@@ -99,7 +94,7 @@ public class AppController {
 //        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
 //        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
 //        // 获取当前登录用户
-//        User loginUser = userService.getLoginUser(request);
+//        User loginUser = InnerUserService.getLoginUser(request);
 //        // 调用服务生成代码（流式）
 //        return appService.chatToGenCode(appId, message, loginUser);
 //    }
@@ -116,7 +111,7 @@ public class AppController {
     public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
         //获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         //创建应用得到
         Long appId = appService.createApp(appAddRequest, loginUser);
         return ResultUtils.success(appId);
@@ -134,7 +129,7 @@ public class AppController {
         if (appUpdateRequest == null || appUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         long id = appUpdateRequest.getId();
         // 判断是否存在
         App oldApp = appService.getById(id);
@@ -165,7 +160,7 @@ public class AppController {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         long id = deleteRequest.getId();
         // 判断是否存在
         App oldApp = appService.getById(id);
@@ -181,7 +176,7 @@ public class AppController {
     /**
      * 4. 根据 id 获取应用详情
      *
-     * @param id      应用 id
+     * @param id 应用 id
      * @return 应用详情
      */
     @GetMapping("/get/vo")
@@ -204,7 +199,7 @@ public class AppController {
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         // 限制每页最多 20 个
         long pageSize = appQueryRequest.getPageSize();
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 个应用");
@@ -259,6 +254,7 @@ public class AppController {
     /**
      * 7. 管理员删除应用
      * 这里的id是应用id
+     *
      * @param deleteRequest 删除请求
      * @return 删除结果
      */
@@ -354,12 +350,11 @@ public class AppController {
         Long appId = appDeployRequest.getAppId();
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
         // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         // 调用服务部署应用
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
     }
-
 
 
     /**
@@ -379,7 +374,7 @@ public class AppController {
         App app = appService.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 3. 权限校验：只有应用创建者可以下载代码
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         if (!app.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
         }

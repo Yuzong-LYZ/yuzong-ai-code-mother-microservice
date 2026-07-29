@@ -8,18 +8,16 @@ import com.yuzong.yuzongaicodemother.common.ResultUtils;
 import com.yuzong.yuzongaicodemother.constant.UserConstant;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
+import com.yuzong.yuzongaicodemother.innerservice.InnerUserService;
 import com.yuzong.yuzongaicodemother.model.dto.chathistory.ChatHistoryQueryRequest;
+import com.yuzong.yuzongaicodemother.model.entity.ChatHistory;
 import com.yuzong.yuzongaicodemother.model.entity.User;
-import com.yuzong.yuzongaicodemother.service.UserService;
+import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.yuzong.yuzongaicodemother.model.entity.ChatHistory;
-import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 对话历史 控制层。
@@ -32,8 +30,7 @@ public class ChatHistoryController {
 
     @Resource
     private ChatHistoryService chatHistoryService;
-    @Resource
-    private UserService userService;
+
 
     /**
      * 1. 分页查询某个应用的对话历史（游标查询）
@@ -49,7 +46,7 @@ public class ChatHistoryController {
                                                               @RequestParam(defaultValue = "10") int pageSize,
                                                               @RequestParam(required = false) LocalDateTime lastCreateTime,
                                                               HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = InnerUserService.getLoginUser(request);
         Page<ChatHistory> result = chatHistoryService.listAppChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
         return ResultUtils.success(result);
     }

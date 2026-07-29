@@ -16,6 +16,8 @@ import com.yuzong.yuzongaicodemother.core.handler.StreamHandlerExecutor;
 import com.yuzong.yuzongaicodemother.exception.BusinessException;
 import com.yuzong.yuzongaicodemother.exception.ErrorCode;
 import com.yuzong.yuzongaicodemother.exception.ThrowUtils;
+import com.yuzong.yuzongaicodemother.innerservice.InnerScreenshotService;
+import com.yuzong.yuzongaicodemother.innerservice.InnerUserService;
 import com.yuzong.yuzongaicodemother.mapper.AppMapper;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppAddRequest;
 import com.yuzong.yuzongaicodemother.model.dto.app.AppQueryRequest;
@@ -25,14 +27,11 @@ import com.yuzong.yuzongaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.yuzong.yuzongaicodemother.model.enums.CodeGenTypeEnum;
 import com.yuzong.yuzongaicodemother.model.vo.AppVO;
 import com.yuzong.yuzongaicodemother.model.vo.UserVO;
-import com.yuzong.yuzongaicodemother.monitor.MonitorContext;
-import com.yuzong.yuzongaicodemother.monitor.MonitorContextHolder;
 import com.yuzong.yuzongaicodemother.service.AppService;
 import com.yuzong.yuzongaicodemother.service.ChatHistoryService;
-import com.yuzong.yuzongaicodemother.service.ScreenshotService;
-import com.yuzong.yuzongaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -54,7 +53,8 @@ import java.util.stream.Collectors;
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
     @Resource
-    private UserService userService;
+    @Lazy
+    private InnerUserService userService;
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
     @Resource
@@ -64,7 +64,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private VueProjectBuilder vueProjectBuilder;
     @Resource
-    private ScreenshotService screenshotService;
+    @Lazy
+    private InnerScreenshotService screenshotService;
     @Resource
     private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
@@ -97,21 +98,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         }
         // 5. 补充：在调用ai服务前，先保存用户信息到数据库中
         chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
-        // 6. 补充：设置监控上下文
-        MonitorContextHolder.setContext(
-                MonitorContext.builder()
-                        .userId(loginUser.getId().toString())
-                        .appId(appId.toString())
-                        .build()
-        );
+
         // 7. 调用 AI 生成代码（流式）
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 8. 修改1次：收集 AI 响应内容并在完成后记录到对话历史
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
-                .doFinally(signalType -> {
-                    // 流结束时清理（无论成功/失败/取消）
-                    MonitorContextHolder.clearContext();
-                });
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
 
     }
 
