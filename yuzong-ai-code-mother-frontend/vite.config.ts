@@ -17,6 +17,7 @@ export default defineConfig({
       '/api': {
         // target: 'http://localhost:8123',
         // 配置了网关8080
+        // 兼容higress
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
