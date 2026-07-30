@@ -26,7 +26,7 @@ create table if not exists user
     isDelete     tinyint      default 0                 not null comment '是否删除',
     UNIQUE KEY uk_userAccount (userAccount),
     INDEX idx_userName (userName)
-    ) comment '用户' collate = utf8mb4_unicode_ci;
+) comment '用户' collate = utf8mb4_unicode_ci;
 
 
 -- 应用表
@@ -65,3 +65,8 @@ create table chat_history
     INDEX idx_createTime (createTime),             -- 提升基于时间的查询性能
     INDEX idx_appId_createTime (appId, createTime) -- 游标查询核心索引
 ) comment '对话历史' collate = utf8mb4_unicode_ci;
+
+-- 修改对话历史表消息字段为 LONGTEXT
+use yuzong_ai_code_mother;
+ALTER TABLE chat_history
+    MODIFY COLUMN message LONGTEXT;
